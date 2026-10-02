@@ -1,0 +1,35 @@
+replicaCount: 2
+
+image:
+  repository: 15soat-phase4-api-exec
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+service:
+  type: ClusterIP
+  port: 8083
+
+ingress:
+  enabled: true
+  className: kong
+  annotations:
+    konghq.com/strip-path: "false"
+    konghq.com/plugins: "jwt-auth,rate-limiting"
+  hosts:
+    - host: api.fiap-oficina.local
+      paths:
+        - path: /api/v1/executions
+          pathType: Prefix
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1024Mi
+  requests:
+    cpu: 250m
+    memory: 512Mi
+
+env:
+  SPRING_PROFILES_ACTIVE: prd
+  SPRING_DATA_MONGODB_URI: "mongodb://exec-mongo.infra-db.svc.cluster.local:27017/exec_db"
+  KAFKA_BOOTSTRAP_SERVERS: "kafka-cluster-kafka-bootstrap.infra-kafka.svc.cluster.local:9092"

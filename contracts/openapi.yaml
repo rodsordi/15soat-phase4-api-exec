@@ -1,0 +1,249 @@
+openapi: 3.0.3
+info:
+  title: Workshop Execution and Production API
+  description: Service responsible for managing workshop execution queue, diagnostics, repairs, and communicating completion in the Saga flow.
+  version: 1.0.0
+servers:
+  - url: http://localhost:8083
+    description: Local development server
+
+paths:
+  /api/v1/executions:
+    post:
+      tags:
+        - Execution
+      summary: Enqueue a new execution order
+      operationId: createExecutionOrder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateExecutionRequest'
+      responses:
+        '201':
+          description: Execution order enqueued successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutionResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+
+  /api/v1/executions/queue:
+    get:
+      tags:
+        - Execution
+      summary: List current execution queue
+      operationId: getExecutionQueue
+      responses:
+        '200':
+          description: List of execution orders in queue
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ExecutionResponse'
+
+  /api/v1/executions/{id}:
+    get:
+      tags:
+        - Execution
+      summary: Retrieve execution order by ID
+      operationId: getExecutionOrderById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Execution order found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutionResponse'
+        '404':
+          description: Execution order not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+
+  /api/v1/executions/{id}/status:
+    patch:
+      tags:
+        - Execution
+      summary: Update status of an execution order
+      operationId: updateExecutionStatus
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateExecutionStatusRequest'
+      responses:
+        '200':
+          description: Status updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutionResponse'
+        '400':
+          description: Invalid status transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '404':
+          description: Execution order not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+
+  /api/v1/executions/{id}/checklist:
+    post:
+      tags:
+        - Execution
+      summary: Add or update a checklist item
+      operationId: addChecklistItem
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddChecklistItemRequest'
+      responses:
+        '200':
+          description: Checklist item recorded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutionResponse'
+        '404':
+          description: Execution order not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+
+components:
+  schemas:
+    CreateExecutionRequest:
+      type: object
+      required:
+        - workOrderId
+      properties:
+        workOrderId:
+          type: string
+          format: uuid
+          example: '123e4567-e89b-12d3-a456-426614174000'
+        technicianId:
+          type: string
+          example: 'TECH-007'
+        notes:
+          type: string
+          example: 'Initial vehicle intake from customer.'
+
+    UpdateExecutionStatusRequest:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: [QUEUED, DIAGNOSIS, IN_REPAIR, WAITING_PARTS, QUALITY_CHECK, COMPLETED, FAILED]
+          example: 'IN_REPAIR'
+        notes:
+          type: string
+          example: 'Brake pads replaced.'
+
+    AddChecklistItemRequest:
+      type: object
+      required:
+        - task
+        - completed
+      properties:
+        task:
+          type: string
+          example: 'Inspect brake discs'
+        completed:
+          type: boolean
+          example: true
+
+    ChecklistItemDto:
+      type: object
+      properties:
+        task:
+          type: string
+        completed:
+          type: boolean
+        completedAt:
+          type: string
+          format: date-time
+
+    ExecutionResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        workOrderId:
+          type: string
+          format: uuid
+        technicianId:
+          type: string
+        status:
+          type: string
+          enum: [QUEUED, DIAGNOSIS, IN_REPAIR, WAITING_PARTS, QUALITY_CHECK, COMPLETED, FAILED]
+        notes:
+          type: string
+        checklist:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChecklistItemDto'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+
+    ProblemDetail:
+      type: object
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
