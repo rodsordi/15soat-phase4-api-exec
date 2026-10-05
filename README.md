@@ -28,81 +28,11 @@ Microsserviço responsável pela gestão da fila física de execução da oficin
 
 Diferente dos microsserviços relacionais, o **`api-exec`** utiliza o banco de dados orientado a documentos **MongoDB** (`exec_db`). 
 
-Seguindo o padrão de **Agregados do DDD (Aggregate Root)**, a ordem de execução física (`execution_orders`) armazena atomicamente suas inspeções de checklist e peças aplicadas como **subdocumentos e arrays embutidos (Embedded Documents)**, dispensando tabelas normalizadas e joins relacionais:
+Seguindo o padrão de **Agregados do DDD (Aggregate Root)**, a ordem de execução física (`execution_orders`) armazena atomicamente suas inspeções de checklist e peças aplicadas como **subdocumentos e arrays embutidos (Embedded Documents)**, dispensando tabelas normalizadas e joins relacionais.
 
-<div style="overflow-x: auto; width: 100%;">
-<div style="min-width: 800px;">
+Para visualizar o diagrama completo da estrutura de documentos, schemas e exemplos BSON/JSON, consulte a especificação centralizada no projeto E2E:
 
-```mermaid
-classDiagram
-    direction TB
-    class ExecutionOrderMongoDocument {
-        <<Document: execution_orders>>
-        +ObjectId _id
-        +UUID workOrderId
-        +String technicianId
-        +ExecutionStatus status
-        +String notes
-        +List~ChecklistItem~ checklist
-        +List~MaintenanceMaterial~ materials
-        +Instant completedAt
-        +Instant createdAt
-        +Instant updatedAt
-    }
-
-    class ChecklistItem {
-        <<Embedded Document>>
-        +String task
-        +Boolean completed
-        +Instant completedAt
-    }
-
-    class MaintenanceMaterial {
-        <<Embedded Document>>
-        +String sku
-        +String name
-        +Integer quantity
-    }
-
-    ExecutionOrderMongoDocument *-- "0..*" ChecklistItem : embedded array
-    ExecutionOrderMongoDocument *-- "0..*" MaintenanceMaterial : embedded array
-```
-
-</div>
-</div>
-
-### Exemplo de Documento BSON / JSON Persistido no MongoDB
-```json
-{
-  "_id": { "$oid": "66f4b1a23c4d5e6f7a8b9c0d" },
-  "workOrderId": "a1b2c3d4-e5f6-7a8b-9c0d-e1f2a3b4c5d6",
-  "technicianId": "TECH-CARLOS-01",
-  "status": "IN_REPAIR",
-  "notes": "Veículo com desgaste acentuado nas pastilhas dianteiras. Substituição efetuada.",
-  "checklist": [
-    {
-      "task": "Verificar nível e viscosidade do óleo do motor",
-      "completed": true,
-      "completedAt": "2026-10-01T14:30:00Z"
-    },
-    {
-      "task": "Inspecionar espessura das pastilhas e discos de freio",
-      "completed": true,
-      "completedAt": "2026-10-01T15:10:00Z"
-    }
-  ],
-  "materials": [
-    {
-      "sku": "PART-BRK-01",
-      "name": "Pastilha de Freio Dianteira Cerâmica",
-      "quantity": 2
-    }
-  ],
-  "createdAt": "2026-10-01T14:00:00Z",
-  "updatedAt": "2026-10-01T15:15:00Z",
-  "completedAt": null
-}
-```
+👉 **[model.md (E2E) - Diagrama do Modelo de Dados & Document Schema](../15soat-phase4-e2e/src/test/resources/features/exec/model.md)**
 
 ## Compilação & Testes
 ```bash
