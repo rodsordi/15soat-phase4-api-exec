@@ -29,6 +29,8 @@ public class ExecutionOrderMongoDocument extends BaseMongoDocument {
 
     private List<ChecklistItemDocument> checklist = new ArrayList<>();
 
+    private List<MaintenanceMaterialDocument> materials = new ArrayList<>();
+
     private Instant completedAt;
 
     public ExecutionOrderMongoDocument(String id) {

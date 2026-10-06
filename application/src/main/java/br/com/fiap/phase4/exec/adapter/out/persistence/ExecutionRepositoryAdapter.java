@@ -60,6 +60,12 @@ public class ExecutionRepositoryAdapter implements ExecutionOrderRepositoryPort 
                     .map(item -> new ChecklistItemDocument(item.task(), item.completed(), item.completedAt()))
                     .toList());
         }
+
+        if (domain.getMaterials() != null) {
+            doc.setMaterials(domain.getMaterials().stream()
+                    .map(mat -> new br.com.fiap.phase4.exec.adapter.out.persistence.entity.MaintenanceMaterialDocument(mat.sku(), mat.name(), mat.quantity()))
+                    .toList());
+        }
         return doc;
     }
 
@@ -69,6 +75,11 @@ public class ExecutionRepositoryAdapter implements ExecutionOrderRepositoryPort 
                         .map(item -> new ChecklistItem(item.getTask(), item.isCompleted(), item.getCompletedAt()))
                         .toList();
 
+        List<br.com.fiap.phase4.exec.domain.model.MaintenanceMaterial> materials = doc.getMaterials() == null ? List.of() :
+                doc.getMaterials().stream()
+                        .map(m -> new br.com.fiap.phase4.exec.domain.model.MaintenanceMaterial(m.getSku(), m.getName(), m.getQuantity()))
+                        .toList();
+
         return new ExecutionOrder(
                 UUID.fromString(doc.getId()),
                 UUID.fromString(doc.getWorkOrderId()),
@@ -76,6 +87,7 @@ public class ExecutionRepositoryAdapter implements ExecutionOrderRepositoryPort 
                 ExecutionStatus.valueOf(doc.getStatus()),
                 doc.getNotes(),
                 checklist,
+                materials,
                 doc.getCreatedAt(),
                 doc.getUpdatedAt(),
                 doc.getCompletedAt()

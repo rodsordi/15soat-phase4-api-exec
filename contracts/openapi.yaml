@@ -204,6 +204,19 @@ components:
           type: string
           format: date-time
 
+    MaintenanceMaterialDto:
+      type: object
+      properties:
+        sku:
+          type: string
+          example: 'PART-BRK-01'
+        name:
+          type: string
+          example: 'Pastilha de Freio Dianteira Cerâmica'
+        quantity:
+          type: integer
+          example: 2
+
     ExecutionResponse:
       type: object
       properties:
@@ -224,6 +237,10 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ChecklistItemDto'
+        materials:
+          type: array
+          items:
+            $ref: '#/components/schemas/MaintenanceMaterialDto'
         createdAt:
           type: string
           format: date-time

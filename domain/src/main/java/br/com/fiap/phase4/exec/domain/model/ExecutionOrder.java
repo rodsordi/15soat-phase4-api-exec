@@ -25,12 +25,15 @@ public class ExecutionOrder {
     @Getter(AccessLevel.NONE)
     private List<ChecklistItem> checklist = new ArrayList<>();
 
+    @Getter(AccessLevel.NONE)
+    private List<MaintenanceMaterial> materials = new ArrayList<>();
+
     private Instant createdAt;
     private Instant updatedAt;
     private Instant completedAt;
 
     public ExecutionOrder(UUID id, UUID workOrderId, String technicianId, ExecutionStatus status,
-                          String notes, List<ChecklistItem> checklist,
+                          String notes, List<ChecklistItem> checklist, List<MaintenanceMaterial> materials,
                           Instant createdAt, Instant updatedAt, Instant completedAt) {
         this.id = Objects.requireNonNull(id, "Execution ID cannot be null");
         this.workOrderId = Objects.requireNonNull(workOrderId, "WorkOrder ID cannot be null");
@@ -38,9 +41,16 @@ public class ExecutionOrder {
         this.status = status != null ? status : ExecutionStatus.QUEUED;
         this.notes = notes;
         this.checklist = checklist != null ? new ArrayList<>(checklist) : new ArrayList<>();
+        this.materials = materials != null ? new ArrayList<>(materials) : new ArrayList<>();
         this.createdAt = createdAt != null ? createdAt : Instant.now();
         this.updatedAt = updatedAt != null ? updatedAt : Instant.now();
         this.completedAt = completedAt;
+    }
+
+    public ExecutionOrder(UUID id, UUID workOrderId, String technicianId, ExecutionStatus status,
+                          String notes, List<ChecklistItem> checklist,
+                          Instant createdAt, Instant updatedAt, Instant completedAt) {
+        this(id, workOrderId, technicianId, status, notes, checklist, List.of(), createdAt, updatedAt, completedAt);
     }
 
     public static ExecutionOrder enqueue(UUID workOrderId, String technicianId, String notes) {
@@ -97,7 +107,19 @@ public class ExecutionOrder {
         this.updatedAt = Instant.now();
     }
 
+    public void addMaterial(String sku, String name, int quantity) {
+        if (this.status == ExecutionStatus.COMPLETED || this.status == ExecutionStatus.FAILED) {
+            throw new DomainException("Cannot add materials to a finalized execution order");
+        }
+        materials.add(MaintenanceMaterial.of(sku, name, quantity));
+        this.updatedAt = Instant.now();
+    }
+
     public List<ChecklistItem> getChecklist() {
         return Collections.unmodifiableList(checklist);
+    }
+
+    public List<MaintenanceMaterial> getMaterials() {
+        return Collections.unmodifiableList(materials);
     }
 }

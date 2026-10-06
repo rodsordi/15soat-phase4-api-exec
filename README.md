@@ -30,9 +30,9 @@ Diferente dos microsserviços relacionais, o **`api-exec`** utiliza o banco de d
 
 Seguindo o padrão de **Agregados do DDD (Aggregate Root)**, a ordem de execução física (`execution_orders`) armazena atomicamente suas inspeções de checklist e peças aplicadas como **subdocumentos e arrays embutidos (Embedded Documents)**, dispensando tabelas normalizadas e joins relacionais.
 
-Para visualizar o diagrama completo da estrutura de documentos, schemas e exemplos BSON/JSON, consulte a especificação centralizada no projeto E2E:
+Para visualizar o diagrama completo da estrutura de documentos, schemas e exemplos BSON/JSON, consulte a especificação do modelo de dados:
 
-👉 **[model.md (E2E) - Diagrama do Modelo de Dados & Document Schema](../15soat-phase4-e2e/src/test/resources/features/exec/model.md)**
+👉 **[MODEL.md - Diagrama do Modelo de Dados & Document Schema](MODEL.md)**
 
 ## Compilação & Testes
 ```bash

@@ -95,6 +95,16 @@ public class ExecutionController implements ExecutionApi {
             }).toList());
         }
 
+        if (domain.getMaterials() != null) {
+            response.setMaterials(domain.getMaterials().stream().map(mat -> {
+                var dto = new br.com.fiap.phase4.exec.adapter.in.web.dto.MaintenanceMaterialDto();
+                dto.setSku(mat.sku());
+                dto.setName(mat.name());
+                dto.setQuantity(mat.quantity());
+                return dto;
+            }).toList());
+        }
+
         return response;
     }
 }
