@@ -145,6 +145,7 @@
                             <goal>generate</goal>
                         </goals>
                         <configuration>
+                            <skip>true</skip>
                             <inputSpec>${project.basedir}/../contracts/openapi.yaml</inputSpec>
                             <generatorName>spring</generatorName>
                             <apiPackage>br.com.fiap.phase4.exec.adapter.in.web.api</apiPackage>

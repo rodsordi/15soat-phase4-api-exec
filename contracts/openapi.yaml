@@ -1,18 +1,18 @@
 openapi: 3.0.3
 info:
-  title: Workshop Execution and Production API
-  description: Service responsible for managing workshop execution queue, diagnostics, repairs, and communicating completion in the Saga flow.
+  title: API de Execução e Produção da Oficina
+  description: Serviço responsável por gerenciar a fila de execução da oficina, diagnósticos, reparos e comunicação de conclusão no fluxo de Saga.
   version: 1.0.0
 servers:
   - url: http://localhost:8083
-    description: Local development server
+    description: Servidor de desenvolvimento local
 
 paths:
   /api/v1/executions:
     post:
       tags:
         - Execution
-      summary: Enqueue a new execution order
+      summary: Enfileirar uma nova ordem de execução
       operationId: createExecutionOrder
       requestBody:
         required: true
@@ -22,13 +22,19 @@ paths:
               $ref: '#/components/schemas/CreateExecutionRequest'
       responses:
         '201':
-          description: Execution order enqueued successfully
+          description: Ordem de execução enfileirada com sucesso
+          headers:
+            Location:
+              description: URI canônica do recurso criado
+              schema:
+                type: string
+                example: '/api/v1/executions/3fa85f64-5717-4562-b3fc-2c963f66afa6'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ExecutionResponse'
         '400':
-          description: Invalid request
+          description: Requisição inválida
           content:
             application/json:
               schema:
@@ -38,40 +44,73 @@ paths:
     get:
       tags:
         - Execution
-      summary: List current execution queue
+      summary: Listar fila atual de execução com paginação
       operationId: getExecutionQueue
+      parameters:
+        - name: createdFrom
+          in: query
+          required: false
+          description: Data/hora inicial de entrada na fila (ISO 8601 UTC)
+          schema:
+            type: string
+            format: date-time
+          example: '2026-10-01T00:00:00Z'
+        - name: createdTo
+          in: query
+          required: false
+          description: Data/hora final de entrada na fila (ISO 8601 UTC)
+          schema:
+            type: string
+            format: date-time
+          example: '2026-10-07T23:59:59Z'
+        - name: page
+          in: query
+          required: false
+          description: Índice da página (iniciando em 0)
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+        - name: size
+          in: query
+          required: false
+          description: Quantidade máxima de registros retornados por página
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
       responses:
         '200':
-          description: List of execution orders in queue
+          description: Lista paginada de ordens de execução na fila
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/ExecutionResponse'
+                $ref: '#/components/schemas/PagedExecutionResponse'
 
   /api/v1/executions/{id}:
     get:
       tags:
         - Execution
-      summary: Retrieve execution order by ID
+      summary: Consultar ordem de execução por ID
       operationId: getExecutionOrderById
       parameters:
         - name: id
           in: path
           required: true
+          description: Identificador único da ordem de execução
           schema:
             type: string
             format: uuid
       responses:
         '200':
-          description: Execution order found
+          description: Ordem de execução localizada
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ExecutionResponse'
         '404':
-          description: Execution order not found
+          description: Ordem de execução não encontrada
           content:
             application/json:
               schema:
@@ -81,12 +120,13 @@ paths:
     patch:
       tags:
         - Execution
-      summary: Update status of an execution order
+      summary: Atualizar status de uma ordem de execução
       operationId: updateExecutionStatus
       parameters:
         - name: id
           in: path
           required: true
+          description: Identificador único da ordem de execução
           schema:
             type: string
             format: uuid
@@ -98,19 +138,19 @@ paths:
               $ref: '#/components/schemas/UpdateExecutionStatusRequest'
       responses:
         '200':
-          description: Status updated successfully
+          description: Status atualizado com sucesso
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ExecutionResponse'
         '400':
-          description: Invalid status transition
+          description: Transição de status inválida
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProblemDetail'
         '404':
-          description: Execution order not found
+          description: Ordem de execução não encontrada
           content:
             application/json:
               schema:
@@ -120,12 +160,13 @@ paths:
     post:
       tags:
         - Execution
-      summary: Add or update a checklist item
+      summary: Adicionar ou atualizar item do checklist técnico
       operationId: addChecklistItem
       parameters:
         - name: id
           in: path
           required: true
+          description: Identificador único da ordem de execução
           schema:
             type: string
             format: uuid
@@ -137,13 +178,13 @@ paths:
               $ref: '#/components/schemas/AddChecklistItemRequest'
       responses:
         '200':
-          description: Checklist item recorded
+          description: Item de checklist registrado com sucesso
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ExecutionResponse'
         '404':
-          description: Execution order not found
+          description: Ordem de execução não encontrada
           content:
             application/json:
               schema:
@@ -153,6 +194,7 @@ components:
   schemas:
     CreateExecutionRequest:
       type: object
+      description: Requisição de abertura de ordem de execução na oficina
       required:
         - workOrderId
       properties:
@@ -160,15 +202,19 @@ components:
           type: string
           format: uuid
           example: '123e4567-e89b-12d3-a456-426614174000'
+          description: Identificador da Ordem de Serviço de origem
         technicianId:
           type: string
           example: 'TECH-007'
+          description: Identificador ou matrícula do mecânico responsável
         notes:
           type: string
-          example: 'Initial vehicle intake from customer.'
+          example: 'Entrada inicial do veículo para diagnóstico.'
+          description: Observações operacionais iniciais
 
     UpdateExecutionStatusRequest:
       type: object
+      description: Requisição para transição de status da execução técnica
       required:
         - status
       properties:
@@ -176,91 +222,147 @@ components:
           type: string
           enum: [QUEUED, DIAGNOSIS, IN_REPAIR, WAITING_PARTS, QUALITY_CHECK, COMPLETED, FAILED]
           example: 'IN_REPAIR'
+          description: Novo status da execução
         notes:
           type: string
-          example: 'Brake pads replaced.'
+          example: 'Pastilhas de freio substituídas.'
+          description: Justificativa ou notas do mecânico sobre o avanço
 
     AddChecklistItemRequest:
       type: object
+      description: Requisição de registro de item do checklist
       required:
         - task
         - completed
       properties:
         task:
           type: string
-          example: 'Inspect brake discs'
+          example: 'Inspecionar discos e pastilhas de freio'
+          description: Descrição da tarefa inspecionada
         completed:
           type: boolean
           example: true
+          description: Indicador se a tarefa técnica foi concluída
 
     ChecklistItemDto:
       type: object
+      description: Dados do item verificado no checklist
       properties:
         task:
           type: string
+          description: Tarefa executada
         completed:
           type: boolean
+          description: Indicador de conclusão
         completedAt:
           type: string
           format: date-time
+          description: Data e hora da conclusão da tarefa
 
     MaintenanceMaterialDto:
       type: object
+      description: Material ou peça consumida na manutenção
       properties:
         sku:
           type: string
           example: 'PART-BRK-01'
+          description: Código SKU da peça utilizada
         name:
           type: string
           example: 'Pastilha de Freio Dianteira Cerâmica'
+          description: Nome do material/peça
         quantity:
           type: integer
           example: 2
+          description: Quantidade consumida
 
     ExecutionResponse:
       type: object
+      description: Dados completos da ordem de execução na oficina
       properties:
         id:
           type: string
           format: uuid
+          description: Identificador único da ordem de execução
         workOrderId:
           type: string
           format: uuid
+          description: Identificador da Ordem de Serviço vinculada
         technicianId:
           type: string
+          description: Identificador do técnico responsável
         status:
           type: string
           enum: [QUEUED, DIAGNOSIS, IN_REPAIR, WAITING_PARTS, QUALITY_CHECK, COMPLETED, FAILED]
+          description: Status atual na linha de produção
         notes:
           type: string
+          description: Histórico e apontamentos técnicos
         checklist:
           type: array
+          description: Lista de itens do checklist técnico
           items:
             $ref: '#/components/schemas/ChecklistItemDto'
         materials:
           type: array
+          description: Peças e materiais consumidos durante os reparos
           items:
             $ref: '#/components/schemas/MaintenanceMaterialDto'
         createdAt:
           type: string
           format: date-time
+          description: Data e hora de entrada na fila
         updatedAt:
           type: string
           format: date-time
+          description: Data e hora da última movimentação
         completedAt:
           type: string
           format: date-time
+          description: Data e hora de finalização dos reparos
+
+    PagedExecutionResponse:
+      type: object
+      description: Resposta paginada de ordens na fila de execução
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExecutionResponse'
+        page:
+          type: integer
+          example: 0
+          description: Índice da página atual
+        size:
+          type: integer
+          example: 20
+          description: Quantidade máxima de registros por página
+        totalElements:
+          type: integer
+          format: int64
+          example: 10
+          description: Quantidade total de registros encontrados
+        totalPages:
+          type: integer
+          example: 1
+          description: Quantidade total de páginas disponíveis
 
     ProblemDetail:
       type: object
+      description: Estrutura padrão de erro RFC 7807/9457
       properties:
         type:
           type: string
+          description: URI que identifica o tipo do problema
         title:
           type: string
+          description: Resumo curto e legível do erro
         status:
           type: integer
+          description: Código de status HTTP
         detail:
           type: string
+          description: Detalhes explicativos do erro ocorrido
         instance:
           type: string
+          description: URI da requisição causadora do erro
