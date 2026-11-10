@@ -29,6 +29,9 @@ resources:
     cpu: 100m
     memory: 512Mi
 
+database:
+  secretName: "exec-mongodb-credentials"
+
 env:
   SPRING_PROFILES_ACTIVE: prd
   SPRING_DATA_MONGODB_URI: "mongodb://mongodb.infra-database.svc.cluster.local:27017/exec_db"

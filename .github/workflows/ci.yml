@@ -127,6 +127,15 @@ jobs:
         run: |
           aws eks update-kubeconfig --name "${{ env.EKS_CLUSTER_NAME }}" --region "${{ env.AWS_REGION }}"
 
+      - name: Synchronize Database Credentials from AWS Secrets Manager
+        run: |
+          SECRET_JSON=$(aws secretsmanager get-secret-value --secret-id exec-mongodb-credentials-prd --region "${{ env.AWS_REGION }}" --query SecretString --output text)
+          MONGO_URI=$(echo "$SECRET_JSON" | jq -r '.uri')
+          kubectl create secret generic exec-mongodb-credentials \
+            --namespace default \
+            --from-literal=uri="$MONGO_URI" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
       - name: Deploy Service to Amazon EKS via Helm
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
