@@ -1,0 +1,521 @@
+openapi: 3.0.3
+info:
+  title: API de Execução e Produção da Oficina
+  description: |
+    Serviço responsável por gerenciar a fila de execução da oficina, diagnósticos, reparos e comunicação de conclusão no fluxo de Saga.
+
+    ### 📐 Padrões Arquiteturais e Conformidade Técnica (RFCs & ADRs)
+    - **Navegação Hipermídia (HATEOAS / Richardson Maturity Model Nível 3)**:
+      - Implementado via padrão HAL (*Hypertext Application Language* - `draft-kelly-json-hal-08` / **RFC 8288**).
+      - Respostas expõem o nó `_links` com links de auto-identificação (`self`) e correlações (`workOrder`).
+      - Suporte a templates de URI parametrizados conforme **RFC 6570** (`templated: boolean`).
+      - Identificadores e referências canônicas estruturadas de acordo com **RFC 3986**.
+    - **Tratamento Padronizado de Erros (RFC 7807 / RFC 9457)**:
+      - Respostas de falha estruturadas no padrão canônico *Problem Details for HTTP APIs* (`application/problem+json`).
+    - **Granularidade e Simetria de DTOs (ADR-0003)**:
+      - `ExecutionDetailedResponse`: Modelo completo para consulta de execução (`GET /executions/{id}`) incluindo checklist e materiais consumidos.
+      - `ExecutionSummaryResponse`: Projeção plana e leve para a fila de produção e listagens paginadas (`PagedExecutionResponse`), contendo `_links.self`.
+  version: 1.0.0
+servers:
+  - url: http://localhost:8083
+    description: Servidor de desenvolvimento local
+
+paths:
+  /api/v1/executions:
+    post:
+      tags:
+        - Execution
+      summary: Enfileirar uma nova ordem de execução
+      operationId: createExecutionOrder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateExecutionRequest'
+      responses:
+        '201':
+          description: Ordem de execução enfileirada com sucesso
+          headers:
+            Location:
+              description: URI canônica do recurso criado
+              schema:
+                type: string
+                example: '/api/v1/executions/3fa85f64-5717-4562-b3fc-2c963f66afa6'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutionDetailedResponse'
+        '400':
+          description: Requisição inválida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+
+  /api/v1/executions/queue:
+    get:
+      tags:
+        - Execution
+      summary: Listar fila atual de execução com paginação
+      operationId: getExecutionQueue
+      parameters:
+        - name: createdFrom
+          in: query
+          required: false
+          description: Data/hora inicial de entrada na fila (ISO 8601 UTC)
+          schema:
+            type: string
+            format: date-time
+          example: '2026-10-01T00:00:00Z'
+        - name: createdTo
+          in: query
+          required: false
+          description: Data/hora final de entrada na fila (ISO 8601 UTC)
+          schema:
+            type: string
+            format: date-time
+          example: '2026-10-07T23:59:59Z'
+        - name: page
+          in: query
+          required: false
+          description: Índice da página (iniciando em 0)
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+        - name: size
+          in: query
+          required: false
+          description: Quantidade máxima de registros retornados por página
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
+      responses:
+        '200':
+          description: Lista paginada de ordens de execução na fila
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedExecutionResponse'
+
+  /api/v1/executions/{id}:
+    get:
+      tags:
+        - Execution
+      summary: Consultar ordem de execução por ID
+      operationId: getExecutionOrderById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Identificador único da ordem de execução
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Ordem de execução localizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutionDetailedResponse'
+        '404':
+          description: Ordem de execução não encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+
+    patch:
+      tags:
+        - Execution
+      summary: Atualizar ordem de execução parcialmente (Status, etc.)
+      operationId: patchExecutionOrder
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Identificador único da ordem de execução
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateExecutionStatusRequest'
+      responses:
+        '200':
+          description: Ordem de execução atualizada com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutionDetailedResponse'
+        '400':
+          description: Transição de status inválida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '404':
+          description: Ordem de execução não encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+
+  /api/v1/executions/{id}/checklist:
+    post:
+      tags:
+        - Execution
+      summary: Adicionar ou atualizar item do checklist técnico
+      operationId: addChecklistItem
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Identificador único da ordem de execução
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddChecklistItemRequest'
+      responses:
+        '200':
+          description: Item de checklist registrado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutionDetailedResponse'
+        '404':
+          description: Ordem de execução não encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+
+  /api/v1/executions/{id}/materials:
+    post:
+      tags:
+        - Execution
+      summary: Adicionar material ou insumo consumido no reparo
+      operationId: addMaintenanceMaterial
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Identificador único da ordem de execução
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddMaterialRequest'
+      responses:
+        '200':
+          description: Material registrado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutionDetailedResponse'
+        '400':
+          description: Dados de material inválidos ou quantidade menor ou igual a zero
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '404':
+          description: Ordem de execução não encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+
+components:
+  schemas:
+    CreateExecutionRequest:
+      type: object
+      description: Requisição de abertura de ordem de execução na oficina
+      required:
+        - workOrderId
+      properties:
+        workOrderId:
+          type: string
+          format: uuid
+          example: '123e4567-e89b-12d3-a456-426614174000'
+          description: Identificador da Ordem de Serviço de origem
+        technicianId:
+          type: string
+          example: 'TECH-007'
+          description: Identificador ou matrícula do mecânico responsável
+        notes:
+          type: string
+          example: 'Entrada inicial do veículo para diagnóstico.'
+          description: Observações operacionais iniciais
+
+    UpdateExecutionStatusRequest:
+      type: object
+      description: Requisição para transição de status da execução técnica
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: [QUEUED, DIAGNOSIS, IN_REPAIR, WAITING_PARTS, QUALITY_CHECK, COMPLETED, FAILED]
+          example: 'IN_REPAIR'
+          description: Novo status da execução
+        notes:
+          type: string
+          example: 'Pastilhas de freio substituídas.'
+          description: Justificativa ou notas do mecânico sobre o avanço
+
+    AddChecklistItemRequest:
+      type: object
+      description: Requisição de registro de item do checklist
+      required:
+        - task
+        - completed
+      properties:
+        task:
+          type: string
+          example: 'Inspecionar discos e pastilhas de freio'
+          description: Descrição da tarefa inspecionada
+        completed:
+          type: boolean
+          example: true
+          description: Indicador se a tarefa técnica foi concluída
+
+    AddMaterialRequest:
+      type: object
+      description: Requisição de registro de material ou insumo consumido na manutenção
+      required:
+        - quantity
+      properties:
+        sku:
+          type: string
+          example: 'PART-BRK-01'
+          description: Código identificador ou SKU da peça
+        materialCode:
+          type: string
+          example: 'PART-BRK-01'
+          description: Sinônimo de SKU / código do material
+        name:
+          type: string
+          example: 'Pastilha de Freio Dianteira'
+          description: Descrição ou nome do material
+        description:
+          type: string
+          example: 'Pastilha de Freio Dianteira'
+          description: Sinônimo de nome / descrição do material
+        quantity:
+          type: integer
+          example: 2
+          description: Quantidade utilizada na baia
+
+    ChecklistItemDto:
+      type: object
+      description: Dados do item verificado no checklist
+      properties:
+        task:
+          type: string
+          description: Tarefa executada
+        completed:
+          type: boolean
+          description: Indicador de conclusão
+        completedAt:
+          type: string
+          format: date-time
+          description: Data e hora da conclusão da tarefa
+
+    MaintenanceMaterialDto:
+      type: object
+      description: Material ou peça consumida na manutenção
+      properties:
+        sku:
+          type: string
+          example: 'PART-BRK-01'
+          description: Código SKU da peça utilizada
+        name:
+          type: string
+          example: 'Pastilha de Freio Dianteira Cerâmica'
+          description: Nome do material/peça
+        quantity:
+          type: integer
+          example: 2
+          description: Quantidade consumida
+
+    # =========================================================================
+    # Execution Schemas (ADR-0003: DTO Granularity & Symmetry)
+    # Padrões aplicados:
+    # - ExecutionDetailedResponse: Modelo completo com checklist e peças aplicadas
+    # - ExecutionSummaryResponse: Projeção plana e otimizada para fila de produção
+    # =========================================================================
+    ExecutionDetailedResponse:
+      type: object
+      description: Dados detalhados e completos da ordem de execução na oficina (inclui checklist e materiais)
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Identificador único da ordem de execução
+        workOrderId:
+          type: string
+          format: uuid
+          description: Identificador da Ordem de Serviço vinculada
+        technicianId:
+          type: string
+          description: Identificador do técnico responsável
+        status:
+          type: string
+          enum: [QUEUED, DIAGNOSIS, IN_REPAIR, WAITING_PARTS, QUALITY_CHECK, COMPLETED, FAILED]
+          description: Status atual na linha de produção
+        notes:
+          type: string
+          description: Histórico e apontamentos técnicos
+        checklist:
+          type: array
+          description: Lista de itens do checklist técnico
+          items:
+            $ref: '#/components/schemas/ChecklistItemDto'
+        materials:
+          type: array
+          description: Peças e materiais consumidos durante os reparos
+          items:
+            $ref: '#/components/schemas/MaintenanceMaterialDto'
+        createdAt:
+          type: string
+          format: date-time
+          description: Data e hora de entrada na fila
+        updatedAt:
+          type: string
+          format: date-time
+          description: Data e hora da última movimentação
+        completedAt:
+          type: string
+          format: date-time
+          description: Data e hora de finalização dos reparos
+        _links:
+          type: object
+          description: Links hipermídia para navegação conforme padrão HAL / Spring HATEOAS
+          properties:
+            self:
+              $ref: '#/components/schemas/Link'
+            workOrder:
+              $ref: '#/components/schemas/Link'
+
+    ExecutionSummaryResponse:
+      type: object
+      description: Resumo plano da ordem de execução para fila e listagens paginadas
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Identificador único da ordem de execução
+        workOrderId:
+          type: string
+          format: uuid
+          description: Identificador da Ordem de Serviço vinculada
+        technicianId:
+          type: string
+          description: Identificador do técnico responsável
+        status:
+          type: string
+          enum: [QUEUED, DIAGNOSIS, IN_REPAIR, WAITING_PARTS, QUALITY_CHECK, COMPLETED, FAILED]
+          description: Status atual na linha de produção
+        createdAt:
+          type: string
+          format: date-time
+          description: Data e hora de entrada na fila
+        _links:
+          type: object
+          description: Links hipermídia para navegação conforme padrão HAL / Spring HATEOAS
+          properties:
+            self:
+              $ref: '#/components/schemas/Link'
+            workOrder:
+              $ref: '#/components/schemas/Link'
+
+    # =========================================================================
+    # Hypermedia Link Schema (RFC 8288 / HAL Specification)
+    # Padrão: Richardson Maturity Model Level 3 & RFC 6570 (URI Template)
+    # Decisão de Design: O atributo 'example' adota URI canônica neutra
+    # (/api/v1/resources/{id}) para evitar acoplamento a domínios específicos
+    # em schemas genéricos e reutilizáveis entre múltiplos recursos.
+    # =========================================================================
+    Link:
+      type: object
+      description: Link hipermídia conforme especificação HAL / RFC 8288
+      required:
+        - href
+      properties:
+        href:
+          type: string
+          example: '/api/v1/resources/3fa85f64-5717-4562-b3fc-2c963f66afa6'
+          description: URI de destino do recurso ou ação hipermídia
+        templated:
+          type: boolean
+          example: false
+          description: Indica se a URI é um URI Template (RFC 6570)
+
+    PagedExecutionResponse:
+      type: object
+      description: Resposta paginada de ordens na fila de execução
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExecutionSummaryResponse'
+        page:
+          type: integer
+          example: 0
+          description: Índice da página atual
+        size:
+          type: integer
+          example: 20
+          description: Quantidade máxima de registros por página
+        totalElements:
+          type: integer
+          format: int64
+          example: 10
+          description: Quantidade total de registros encontrados
+        totalPages:
+          type: integer
+          example: 1
+          description: Quantidade total de páginas disponíveis
+
+    # =========================================================================
+    # Error Handling Schema (RFC 7807 / RFC 9457: Problem Details for HTTP APIs)
+    # Padrão canônico de respostas de erro para APIs HTTP/REST.
+    # Provê semântica unificada de falhas operacionais e de regras de negócio.
+    # Content-Type correspondente: application/problem+json
+    # =========================================================================
+    ProblemDetail:
+      type: object
+      description: Estrutura padrão de erro conforme especificações RFC 7807 e RFC 9457
+      properties:
+        type:
+          type: string
+          description: URI que identifica o tipo do problema
+        title:
+          type: string
+          description: Resumo curto e legível do erro
+        status:
+          type: integer
+          description: Código de status HTTP
+        detail:
+          type: string
+          description: Detalhes explicativos do erro ocorrido
+        instance:
+          type: string
+          description: URI da requisição causadora do erro

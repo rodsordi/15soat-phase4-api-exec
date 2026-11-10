@@ -145,8 +145,8 @@
                             <goal>generate</goal>
                         </goals>
                         <configuration>
-                            <skip>true</skip>
-                            <inputSpec>${project.basedir}/../contracts/openapi.yaml</inputSpec>
+                            <skip>false</skip>
+                            <inputSpec>${project.basedir}/src/main/resources/contracts/openapi.yaml</inputSpec>
                             <generatorName>spring</generatorName>
                             <apiPackage>br.com.fiap.phase4.exec.adapter.in.web.api</apiPackage>
                             <modelPackage>br.com.fiap.phase4.exec.adapter.in.web.dto</modelPackage>
@@ -162,6 +162,43 @@
                     </execution>
                 </executions>
             </plugin>
+
+            <!-- ZenWave AsyncAPI Generator for Event-Driven Inbound & Outbound Interfaces -->
+            <plugin>
+                <groupId>io.github.zenwave360.zenwave-sdk</groupId>
+                <artifactId>zenwave-sdk-maven-plugin</artifactId>
+                <version>1.7.1</version>
+                <executions>
+                    <execution>
+                        <id>generate-asyncapi-dtos</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>generate</goal>
+                        </goals>
+                        <configuration>
+                            <generatorName>jsonschema2pojo</generatorName>
+                            <inputSpec>${project.basedir}/src/main/resources/contracts/asyncapi.yaml</inputSpec>
+                            <targetFolder>${project.build.directory}/generated-sources/asyncapi</targetFolder>
+                            <configOptions>
+                                <modelPackage>br.com.fiap.phase4.exec.adapter.in.kafka.dto</modelPackage>
+                            </configOptions>
+                        </configuration>
+                    </execution>
+                </executions>
+                <dependencies>
+                    <dependency>
+                        <groupId>io.github.zenwave360.zenwave-sdk.plugins</groupId>
+                        <artifactId>asyncapi-spring-cloud-streams3</artifactId>
+                        <version>1.7.1</version>
+                    </dependency>
+                    <dependency>
+                        <groupId>io.github.zenwave360.zenwave-sdk.plugins</groupId>
+                        <artifactId>asyncapi-jsonschema2pojo</artifactId>
+                        <version>1.7.1</version>
+                    </dependency>
+                </dependencies>
+            </plugin>
+
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>build-helper-maven-plugin</artifactId>
@@ -176,6 +213,7 @@
                         <configuration>
                             <sources>
                                 <source>${project.build.directory}/generated-sources/openapi/src/main/java</source>
+                                <source>${project.build.directory}/generated-sources/asyncapi/src/main/java</source>
                             </sources>
                         </configuration>
                     </execution>

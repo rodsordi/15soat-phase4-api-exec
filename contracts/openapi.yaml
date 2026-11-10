@@ -202,6 +202,46 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProblemDetail'
 
+  /api/v1/executions/{id}/materials:
+    post:
+      tags:
+        - Execution
+      summary: Adicionar material ou insumo consumido no reparo
+      operationId: addMaintenanceMaterial
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Identificador único da ordem de execução
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddMaterialRequest'
+      responses:
+        '200':
+          description: Material registrado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutionDetailedResponse'
+        '400':
+          description: Dados de material inválidos ou quantidade menor ou igual a zero
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '404':
+          description: Ordem de execução não encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+
 components:
   schemas:
     CreateExecutionRequest:
@@ -255,6 +295,33 @@ components:
           type: boolean
           example: true
           description: Indicador se a tarefa técnica foi concluída
+
+    AddMaterialRequest:
+      type: object
+      description: Requisição de registro de material ou insumo consumido na manutenção
+      required:
+        - quantity
+      properties:
+        sku:
+          type: string
+          example: 'PART-BRK-01'
+          description: Código identificador ou SKU da peça
+        materialCode:
+          type: string
+          example: 'PART-BRK-01'
+          description: Sinônimo de SKU / código do material
+        name:
+          type: string
+          example: 'Pastilha de Freio Dianteira'
+          description: Descrição ou nome do material
+        description:
+          type: string
+          example: 'Pastilha de Freio Dianteira'
+          description: Sinônimo de nome / descrição do material
+        quantity:
+          type: integer
+          example: 2
+          description: Quantidade utilizada na baia
 
     ChecklistItemDto:
       type: object

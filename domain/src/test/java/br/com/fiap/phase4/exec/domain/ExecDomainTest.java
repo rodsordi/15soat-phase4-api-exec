@@ -3,6 +3,7 @@ package br.com.fiap.phase4.exec.domain;
 import br.com.fiap.phase4.commons.domain.exception.DomainException;
 import br.com.fiap.phase4.exec.domain.model.ExecutionOrder;
 import br.com.fiap.phase4.exec.domain.model.ExecutionStatus;
+import br.com.fiap.phase4.exec.domain.model.MaintenanceMaterial;
 import br.com.fiap.phase4.exec.domain.port.out.ExecutionEventPublisherPort;
 import br.com.fiap.phase4.exec.domain.port.out.ExecutionOrderRepositoryPort;
 import br.com.fiap.phase4.exec.domain.usecase.ExecutionService;
@@ -47,6 +48,17 @@ class ExecDomainTest {
     }
 
     @Test
+    @DisplayName("Should return existing execution order if already created for workOrderId (idempotency)")
+    void shouldReturnExistingWhenAlreadyCreated() {
+        UUID workOrderId = UUID.randomUUID();
+
+        ExecutionOrder first = service.startExecution(workOrderId, "TECH-01", "First");
+        ExecutionOrder second = service.startExecution(workOrderId, "TECH-02", "Second");
+
+        assertThat(second.getId()).isEqualTo(first.getId());
+    }
+
+    @Test
     @DisplayName("Should progress execution order through diagnostic, repair, and completion")
     void shouldProgressExecutionOrder() {
         UUID workOrderId = UUID.randomUUID();
@@ -64,6 +76,46 @@ class ExecDomainTest {
     }
 
     @Test
+    @DisplayName("Should successfully add maintenance materials to execution order")
+    void shouldAddMaintenanceMaterial() {
+        UUID workOrderId = UUID.randomUUID();
+        ExecutionOrder order = service.startExecution(workOrderId, "TECH-01", "Start");
+
+        ExecutionOrder updated = service.addMaterial(order.getId(), "PART-BRK-01", "Pastilha de Freio", 2);
+
+        assertThat(updated.getMaterials()).hasSize(1);
+        MaintenanceMaterial material = updated.getMaterials().get(0);
+        assertThat(material.sku()).isEqualTo("PART-BRK-01");
+        assertThat(material.name()).isEqualTo("Pastilha de Freio");
+        assertThat(material.quantity()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("Should reject adding material with quantity less than or equal to zero")
+    void shouldRejectMaterialWithInvalidQuantity() {
+        assertThatThrownBy(() -> MaintenanceMaterial.of("PART-01", "Filtro", 0))
+                .isInstanceOf(DomainException.class)
+                .hasMessageContaining("Quantity must be greater than zero")
+                .satisfies(ex -> assertThat(((DomainException) ex).getErrorCode()).isEqualTo("MATERIAL_INVALID_QUANTITY"));
+
+        assertThatThrownBy(() -> MaintenanceMaterial.of("PART-01", "Filtro", -1))
+                .isInstanceOf(DomainException.class)
+                .hasMessageContaining("Quantity must be greater than zero");
+    }
+
+    @Test
+    @DisplayName("Should reject blank checklist task description")
+    void shouldRejectBlankChecklistTask() {
+        UUID workOrderId = UUID.randomUUID();
+        ExecutionOrder order = service.startExecution(workOrderId, "TECH-01", "Start");
+
+        assertThatThrownBy(() -> service.addChecklistItem(order.getId(), "   ", true))
+                .isInstanceOf(DomainException.class)
+                .hasMessageContaining("Task description cannot be blank")
+                .satisfies(ex -> assertThat(((DomainException) ex).getErrorCode()).isEqualTo("TASK_DESCRIPTION_BLANK"));
+    }
+
+    @Test
     @DisplayName("Should reject status change after completion")
     void shouldRejectStatusChangeAfterCompletion() {
         UUID workOrderId = UUID.randomUUID();
@@ -72,7 +124,21 @@ class ExecDomainTest {
 
         assertThatThrownBy(() -> service.updateStatus(order.getId(), ExecutionStatus.IN_REPAIR, "Reopen"))
                 .isInstanceOf(DomainException.class)
-                .hasMessageContaining("Cannot change status of a completed execution order");
+                .hasMessageContaining("Cannot change status of a finalized execution order")
+                .satisfies(ex -> assertThat(((DomainException) ex).getErrorCode()).isEqualTo("EXECUTION_ALREADY_FINALIZED"));
+    }
+
+    @Test
+    @DisplayName("Should reject adding material after completion")
+    void shouldRejectAddingMaterialAfterCompletion() {
+        UUID workOrderId = UUID.randomUUID();
+        ExecutionOrder order = service.startExecution(workOrderId, "TECH-01", "Start");
+        service.updateStatus(order.getId(), ExecutionStatus.COMPLETED, "Done");
+
+        assertThatThrownBy(() -> service.addMaterial(order.getId(), "PART-01", "Filtro", 1))
+                .isInstanceOf(DomainException.class)
+                .hasMessageContaining("Cannot add materials to a finalized execution order")
+                .satisfies(ex -> assertThat(((DomainException) ex).getErrorCode()).isEqualTo("EXECUTION_ALREADY_FINALIZED"));
     }
 
     static class InMemoryExecutionRepository implements ExecutionOrderRepositoryPort {

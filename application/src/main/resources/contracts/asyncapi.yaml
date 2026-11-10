@@ -1,0 +1,137 @@
+asyncapi: 3.0.0
+info:
+  title: Workshop Execution and Production Events API
+  version: 1.0.0
+  description: Event-driven choreography for workshop execution, listening to payment confirmations and publishing execution progress.
+
+servers:
+  kafkaBootstrap:
+    host: localhost:9092
+    protocol: kafka
+    description: Apache Kafka broker cluster
+
+channels:
+  paymentConfirmedChannel:
+    address: payment.confirmed
+    messages:
+      PaymentConfirmedMessage:
+        $ref: '#/components/messages/PaymentConfirmed'
+
+  executionStartedChannel:
+    address: execution.started
+    messages:
+      ExecutionStartedMessage:
+        $ref: '#/components/messages/ExecutionStarted'
+
+  executionCompletedChannel:
+    address: execution.completed
+    messages:
+      ExecutionCompletedMessage:
+        $ref: '#/components/messages/ExecutionCompleted'
+
+  executionFailedChannel:
+    address: execution.failed
+    messages:
+      ExecutionFailedMessage:
+        $ref: '#/components/messages/ExecutionFailed'
+
+operations:
+  receivePaymentConfirmed:
+    action: receive
+    channel:
+      $ref: '#/channels/paymentConfirmedChannel'
+    summary: Consumed when payment is confirmed to trigger automatic entry into the execution queue
+
+  publishExecutionStarted:
+    action: send
+    channel:
+      $ref: '#/channels/executionStartedChannel'
+    summary: Published when a technician begins work on an order
+
+  publishExecutionCompleted:
+    action: send
+    channel:
+      $ref: '#/channels/executionCompletedChannel'
+    summary: Published when repair/maintenance is completed successfully
+
+  publishExecutionFailed:
+    action: send
+    channel:
+      $ref: '#/channels/executionFailedChannel'
+    summary: Published when execution fails, triggering compensation in Saga
+
+components:
+  messages:
+    PaymentConfirmed:
+      payload:
+        type: object
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          workOrderId:
+            type: string
+            format: uuid
+          invoiceId:
+            type: string
+            format: uuid
+          amount:
+            type: number
+          timestamp:
+            type: string
+            format: date-time
+
+    ExecutionStarted:
+      payload:
+        type: object
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          executionId:
+            type: string
+            format: uuid
+          workOrderId:
+            type: string
+            format: uuid
+          technicianId:
+            type: string
+          timestamp:
+            type: string
+            format: date-time
+
+    ExecutionCompleted:
+      payload:
+        type: object
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          executionId:
+            type: string
+            format: uuid
+          workOrderId:
+            type: string
+            format: uuid
+          timestamp:
+            type: string
+            format: date-time
+
+    ExecutionFailed:
+      payload:
+        type: object
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          executionId:
+            type: string
+            format: uuid
+          workOrderId:
+            type: string
+            format: uuid
+          reason:
+            type: string
+          timestamp:
+            type: string
+            format: date-time

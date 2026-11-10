@@ -1,5 +1,7 @@
 package br.com.fiap.phase4.exec.domain.model;
 
+import br.com.fiap.phase4.commons.domain.exception.DomainException;
+
 import java.util.Objects;
 
 public record MaintenanceMaterial(
@@ -11,7 +13,7 @@ public record MaintenanceMaterial(
         Objects.requireNonNull(sku, "SKU is required");
         Objects.requireNonNull(name, "Name is required");
         if (quantity <= 0) {
-            throw new IllegalArgumentException("Quantity must be greater than zero");
+            throw new DomainException("MATERIAL_INVALID_QUANTITY", "Quantity must be greater than zero");
         }
     }
 

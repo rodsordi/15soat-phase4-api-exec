@@ -70,11 +70,8 @@ public class ExecutionOrder {
 
     public void updateStatus(ExecutionStatus newStatus, String updatedNotes) {
         Objects.requireNonNull(newStatus, "New status cannot be null");
-        if (this.status == ExecutionStatus.COMPLETED) {
-            throw new DomainException("Cannot change status of a completed execution order");
-        }
-        if (this.status == ExecutionStatus.FAILED) {
-            throw new DomainException("Cannot change status of a failed execution order");
+        if (this.status == ExecutionStatus.COMPLETED || this.status == ExecutionStatus.FAILED) {
+            throw new DomainException("EXECUTION_ALREADY_FINALIZED", "Cannot change status of a finalized execution order");
         }
 
         this.status = newStatus;
@@ -91,10 +88,10 @@ public class ExecutionOrder {
     public void addOrUpdateChecklistItem(String task, boolean completed) {
         Objects.requireNonNull(task, "Task cannot be null");
         if (task.isBlank()) {
-            throw new DomainException("Task description cannot be blank");
+            throw new DomainException("TASK_DESCRIPTION_BLANK", "Task description cannot be blank");
         }
         if (this.status == ExecutionStatus.COMPLETED || this.status == ExecutionStatus.FAILED) {
-            throw new DomainException("Cannot alter checklist of a finalized execution order");
+            throw new DomainException("EXECUTION_ALREADY_FINALIZED", "Cannot alter checklist of a finalized execution order");
         }
 
         checklist.removeIf(item -> item.task().equalsIgnoreCase(task.trim()));
@@ -109,7 +106,7 @@ public class ExecutionOrder {
 
     public void addMaterial(String sku, String name, int quantity) {
         if (this.status == ExecutionStatus.COMPLETED || this.status == ExecutionStatus.FAILED) {
-            throw new DomainException("Cannot add materials to a finalized execution order");
+            throw new DomainException("EXECUTION_ALREADY_FINALIZED", "Cannot add materials to a finalized execution order");
         }
         materials.add(MaintenanceMaterial.of(sku, name, quantity));
         this.updatedAt = Instant.now();
