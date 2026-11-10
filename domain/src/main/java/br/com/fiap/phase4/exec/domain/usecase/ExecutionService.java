@@ -4,6 +4,7 @@ import br.com.fiap.phase4.commons.domain.exception.ResourceNotFoundException;
 import br.com.fiap.phase4.exec.domain.model.ExecutionOrder;
 import br.com.fiap.phase4.exec.domain.model.ExecutionStatus;
 import br.com.fiap.phase4.exec.domain.port.in.AddChecklistItemUseCase;
+import br.com.fiap.phase4.exec.domain.port.in.AddMaterialUseCase;
 import br.com.fiap.phase4.exec.domain.port.in.GetExecutionOrderUseCase;
 import br.com.fiap.phase4.exec.domain.port.in.ListExecutionQueueUseCase;
 import br.com.fiap.phase4.exec.domain.port.in.StartExecutionUseCase;
@@ -24,7 +25,8 @@ public class ExecutionService implements
         UpdateExecutionStatusUseCase,
         GetExecutionOrderUseCase,
         ListExecutionQueueUseCase,
-        AddChecklistItemUseCase {
+        AddChecklistItemUseCase,
+        AddMaterialUseCase {
 
     private final ExecutionOrderRepositoryPort repository;
     private final ExecutionEventPublisherPort eventPublisher;
@@ -84,6 +86,13 @@ public class ExecutionService implements
     public ExecutionOrder addChecklistItem(UUID id, String task, boolean completed) {
         ExecutionOrder order = getById(id);
         order.addOrUpdateChecklistItem(task, completed);
+        return repository.save(order);
+    }
+
+    @Override
+    public ExecutionOrder addMaterial(UUID id, String sku, String name, int quantity) {
+        ExecutionOrder order = getById(id);
+        order.addMaterial(sku, name, quantity);
         return repository.save(order);
     }
 }

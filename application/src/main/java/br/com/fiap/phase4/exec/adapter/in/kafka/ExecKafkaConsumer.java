@@ -6,6 +6,7 @@ import br.com.fiap.phase4.exec.domain.port.in.StartExecutionUseCase;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.slf4j.MDC;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
@@ -22,19 +23,29 @@ public class ExecKafkaConsumer {
     @KafkaListener(topics = "payment-events", groupId = "exec-payment-group")
     public void consumePaymentEvents(ConsumerRecord<String, EventEnvelope<Map<String, Object>>> record) {
         String traceId = KafkaTraceContextUtils.extractTraceId(record.headers());
-        EventEnvelope<Map<String, Object>> envelope = record.value();
-
-        if (envelope == null || envelope.metadata() == null) {
-            return;
+        if (traceId != null) {
+            MDC.put("traceId", traceId);
         }
 
-        String eventType = envelope.metadata().eventType();
-        log.info("Received event on payment-events: {} [traceId: {}]", eventType, traceId);
+        try {
+            EventEnvelope<Map<String, Object>> envelope = record.value();
+            if (envelope == null || envelope.metadata() == null) {
+                return;
+            }
 
-        if ("PaymentConfirmedEvent".equalsIgnoreCase(eventType)) {
-            UUID workOrderId = UUID.fromString(envelope.payload().get("workOrderId").toString());
-            log.info("Saga Step: Payment confirmed. Enqueueing Work Order {} into workshop execution queue", workOrderId);
-            startExecutionUseCase.startExecution(workOrderId, null, "Auto-enqueued after payment confirmation");
+            String eventType = envelope.metadata().eventType();
+            log.info("Received event on payment-events: {} [traceId: {}]", eventType, traceId);
+
+            if ("PaymentConfirmedEvent".equalsIgnoreCase(eventType) || "PaymentConfirmed".equalsIgnoreCase(eventType)) {
+                Map<String, Object> payload = envelope.payload();
+                if (payload != null && payload.get("workOrderId") != null) {
+                    UUID workOrderId = UUID.fromString(payload.get("workOrderId").toString());
+                    log.info("Saga Progression: Enqueuing execution order for workOrderId: {}", workOrderId);
+                    startExecutionUseCase.startExecution(workOrderId, null, "Auto-enqueued on payment confirmation");
+                }
+            }
+        } finally {
+            MDC.remove("traceId");
         }
     }
 }

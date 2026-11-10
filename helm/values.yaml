@@ -16,7 +16,7 @@ ingress:
     konghq.com/strip-path: "false"
     konghq.com/plugins: "jwt-auth,rate-limiting"
   hosts:
-    - host: api.fiap-oficina.local
+    - host: api.garage.fiap.com.br
       paths:
         - path: /api/v1/executions
           pathType: Prefix
@@ -26,10 +26,10 @@ resources:
     cpu: 1000m
     memory: 1024Mi
   requests:
-    cpu: 250m
+    cpu: 100m
     memory: 512Mi
 
 env:
   SPRING_PROFILES_ACTIVE: prd
-  SPRING_DATA_MONGODB_URI: "mongodb://exec-mongo.infra-db.svc.cluster.local:27017/exec_db"
+  SPRING_DATA_MONGODB_URI: "mongodb://mongodb.infra-database.svc.cluster.local:27017/exec_db"
   KAFKA_BOOTSTRAP_SERVERS: "kafka-cluster-kafka-bootstrap.infra-kafka.svc.cluster.local:9092"
