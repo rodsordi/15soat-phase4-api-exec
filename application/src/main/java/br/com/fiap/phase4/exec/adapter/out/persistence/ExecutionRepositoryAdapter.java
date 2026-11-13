@@ -25,6 +25,15 @@ public class ExecutionRepositoryAdapter implements ExecutionOrderRepositoryPort 
     @Override
     public ExecutionOrder save(ExecutionOrder order) {
         ExecutionOrderMongoDocument document = toDocument(order);
+        if (order.getId() != null) {
+            repository.findById(order.getId().toString())
+                    .ifPresent(existing -> {
+                        document.setVersion(existing.getVersion());
+                        if (existing.getCreatedAt() != null) {
+                            document.setCreatedAt(existing.getCreatedAt());
+                        }
+                    });
+        }
         ExecutionOrderMongoDocument saved = repository.save(document);
         return toDomain(saved);
     }

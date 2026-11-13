@@ -96,6 +96,37 @@ class ExecutionRepositoryAdapterTest {
     }
 
     @Test
+    @DisplayName("Should preserve version and createdAt when updating existing execution order")
+    void shouldPreserveVersionAndCreatedAtWhenUpdatingExistingDocument() {
+        Instant originalCreatedAt = Instant.now().minusSeconds(7200);
+        ExecutionOrderMongoDocument existingDoc = new ExecutionOrderMongoDocument(
+                executionId.toString(),
+                workOrderId.toString(),
+                "TECH-101",
+                ExecutionStatus.QUEUED.name(),
+                "Queued repair",
+                List.of(),
+                List.of(),
+                originalCreatedAt,
+                originalCreatedAt,
+                null
+        );
+        existingDoc.setVersion(3L);
+
+        when(repository.findById(executionId.toString())).thenReturn(Optional.of(existingDoc));
+        when(repository.save(any(ExecutionOrderMongoDocument.class))).thenReturn(sampleDoc);
+
+        ExecutionOrder result = adapter.save(sampleOrder);
+
+        assertThat(result).isNotNull();
+        ArgumentCaptor<ExecutionOrderMongoDocument> captor = ArgumentCaptor.forClass(ExecutionOrderMongoDocument.class);
+        verify(repository).save(captor.capture());
+        ExecutionOrderMongoDocument captured = captor.getValue();
+        assertThat(captured.getVersion()).isEqualTo(3L);
+        assertThat(captured.getCreatedAt()).isEqualTo(originalCreatedAt);
+    }
+
+    @Test
     @DisplayName("Should find execution order by ID")
     void shouldFindById() {
         when(repository.findById(executionId.toString())).thenReturn(Optional.of(sampleDoc));
