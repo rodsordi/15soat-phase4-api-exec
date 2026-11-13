@@ -46,7 +46,7 @@ class ExecKafkaConsumerTest {
                 payload
         );
 
-        ConsumerRecord<String, EventEnvelope<Map<String, Object>>> record = new ConsumerRecord<>(
+        ConsumerRecord<String, Object> record = new ConsumerRecord<>(
                 "payment-events",
                 0,
                 0L,
@@ -69,7 +69,7 @@ class ExecKafkaConsumerTest {
                 Map.of()
         );
 
-        ConsumerRecord<String, EventEnvelope<Map<String, Object>>> record = new ConsumerRecord<>(
+        ConsumerRecord<String, Object> record = new ConsumerRecord<>(
                 "payment-events",
                 0,
                 0L,

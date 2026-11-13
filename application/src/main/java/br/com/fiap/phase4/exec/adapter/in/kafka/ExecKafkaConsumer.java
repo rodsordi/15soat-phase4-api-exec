@@ -21,23 +21,43 @@ public class ExecKafkaConsumer {
     private final StartExecutionUseCase startExecutionUseCase;
 
     @KafkaListener(topics = "payment-events", groupId = "exec-payment-group")
-    public void consumePaymentEvents(ConsumerRecord<String, EventEnvelope<Map<String, Object>>> record) {
+    public void consumePaymentEvents(ConsumerRecord<String, Object> record) {
         String traceId = KafkaTraceContextUtils.extractTraceId(record.headers());
         if (traceId != null) {
             MDC.put("traceId", traceId);
         }
 
         try {
-            EventEnvelope<Map<String, Object>> envelope = record.value();
-            if (envelope == null || envelope.metadata() == null) {
+            Object rawValue = record.value();
+            if (rawValue == null) {
                 return;
             }
 
-            String eventType = envelope.metadata().eventType();
+            Map<String, Object> payload = null;
+            String eventType = null;
+
+            if (rawValue instanceof EventEnvelope<?> envelope) {
+                if (envelope.metadata() != null) {
+                    eventType = envelope.metadata().eventType();
+                }
+                if (envelope.payload() instanceof Map<?, ?> map) {
+                    payload = (Map<String, Object>) map;
+                }
+            } else if (rawValue instanceof Map<?, ?> map) {
+                Map<String, Object> mapValue = (Map<String, Object>) map;
+                if (mapValue.get("metadata") instanceof Map<?, ?> meta) {
+                    eventType = (String) meta.get("eventType");
+                }
+                if (mapValue.get("payload") instanceof Map<?, ?> inner) {
+                    payload = (Map<String, Object>) inner;
+                } else {
+                    payload = mapValue;
+                }
+            }
+
             log.info("Received event on payment-events: {} [traceId: {}]", eventType, traceId);
 
-            if ("PaymentConfirmedEvent".equalsIgnoreCase(eventType) || "PaymentConfirmed".equalsIgnoreCase(eventType)) {
-                Map<String, Object> payload = envelope.payload();
+            if (eventType == null || "PaymentConfirmedEvent".equalsIgnoreCase(eventType) || "PaymentConfirmed".equalsIgnoreCase(eventType)) {
                 if (payload != null && payload.get("workOrderId") != null) {
                     UUID workOrderId = UUID.fromString(payload.get("workOrderId").toString());
                     log.info("Saga Progression: Enqueuing execution order for workOrderId: {}", workOrderId);
