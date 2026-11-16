@@ -33,6 +33,10 @@
             <groupId>br.com.fiap.phase4</groupId>
             <artifactId>mod-mongo</artifactId>
         </dependency>
+        <dependency>
+            <groupId>br.com.fiap.phase4</groupId>
+            <artifactId>mod-security</artifactId>
+        </dependency>
 
         <dependency>
             <groupId>org.springframework.boot</groupId>
