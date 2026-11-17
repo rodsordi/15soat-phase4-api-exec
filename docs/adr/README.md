@@ -9,6 +9,7 @@ Este diretório contém os registros formais de decisões de arquitetura (**ADRs
 | ADR | Título | Status | Data |
 | :---: | :--- | :---: | :---: |
 | **[ADR 0001](0001-mongodb-document-modeling-embedded-checklists-materials.md)** | Modelagem NoSQL Orientada a Documentos com Coleções Embutidas no MongoDB | **Aceito** | 2026-10-02 |
+| **[ADR 0002](0002-persistencia-nosql-mongodb-exec-db.md)** | Adoção do MongoDB NoSQL (`exec_db`) para Dinamismo Operacional, Checklists Sem Esquema Rígido e Fila de Oficina | **Aceito** | 2026-10-02 |
 
 ---
 
