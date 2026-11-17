@@ -35,6 +35,9 @@
         <archunit.version>1.4.1</archunit.version>
         <testcontainers.version>1.20.5</testcontainers.version>
         <lombok.version>1.18.46</lombok.version>
+        <sonar.organization>rodsordi</sonar.organization>
+        <sonar.projectKey>rodsordi_15soat-phase4-api-exec</sonar.projectKey>
+        <sonar.host.url>https://sonarcloud.io</sonar.host.url>
     </properties>
 
     <dependencyManagement>
