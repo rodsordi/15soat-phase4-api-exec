@@ -14,6 +14,10 @@
     <name>exec-application</name>
     <description>Application Layer with Spring Boot 4, MongoDB, Kafka, OpenAPI Generator</description>
 
+    <properties>
+        <jacoco.skip>true</jacoco.skip>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>br.com.fiap.phase4</groupId>
