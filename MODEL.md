@@ -16,9 +16,6 @@ Diferente dos microsserviços relacionais (`work-order` e `billing`), o microsse
 
 ## 2. Diagrama de Classes e Estrutura do Documento
 
-<div style="overflow-x: auto; width: 100%;">
-<div style="min-width: 850px;">
-
 ```mermaid
 classDiagram
     direction TB
@@ -52,9 +49,6 @@ classDiagram
     ExecutionOrderMongoDocument *-- "0..*" ChecklistItemDocument : checklist (embedded array)
     ExecutionOrderMongoDocument *-- "0..*" MaintenanceMaterial : materials (embedded array)
 ```
-
-</div>
-</div>
 
 ---
 
